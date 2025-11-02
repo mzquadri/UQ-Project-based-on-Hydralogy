@@ -2,4 +2,4 @@
 This is a project seminar
 
 
-author - Zamin quadri
+author - Mohd Zamin quadri
