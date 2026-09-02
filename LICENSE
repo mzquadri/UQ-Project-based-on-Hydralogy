@@ -1,0 +1,21 @@
+Copyright (c) 2026 the Group B authors.
+
+All rights reserved.
+
+This repository holds coursework produced for a seminar at the Technical University of
+Munich in Winter Semester 2025/26. It is published so the work can be read, not so it can
+be reused: no licence to copy, modify, distribute or create derivative works is granted.
+
+No open-source licence is offered here, and that is deliberate rather than an oversight.
+The work has three authors, listed under Contributors in README.md, so no one of them can
+grant those rights alone. Anyone wanting to reuse any part of it should ask all three.
+
+Two things in this repository are not the authors' to license at all, and are covered by
+their own terms rather than this notice:
+
+  - The HBV model formulation and any course-provided material, which belong to the
+    Chair of Hydrology and River Basin Management.
+  - Third-party libraries listed in requirements.txt, each under its own licence.
+
+Reading, citing and quoting with attribution are all fine. Reuse of the code or the
+figures is not, without permission.

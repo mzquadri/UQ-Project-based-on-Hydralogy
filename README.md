@@ -368,7 +368,7 @@ The seminar builds a progressive chain: a calibrated HBV001a baseline (Assignmen
 
 ## License
 
-This project was developed as part of an academic seminar at the Technical University of Munich. All rights reserved by the authors.
+This project was developed as part of an academic seminar at the Technical University of Munich. All rights reserved by the authors — see [LICENSE](LICENSE), which also records what belongs to the Chair rather than to us, and why no open-source licence is offered for three-author coursework.
 
 ---
 
