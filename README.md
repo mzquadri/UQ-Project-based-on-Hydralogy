@@ -1,377 +1,289 @@
-<p align="center">
-  <img src="Overleaf_Projects/Mathematical%20methods%20for%20uncertainty%20quantification%20in%20hydrology/Figures/TUM_logo.png" alt="TUM Logo" width="120"/>
-</p>
+# Uncertainty Quantification in Hydrology
 
-<h1 align="center">Uncertainty Quantification in Hydrology</h1>
+Project seminar, Mathematical Methods for Uncertainty Quantification in Hydrology.
+Chair of Hydrology and River Basin Management, Technical University of Munich,
+winter semester 2025/26. Group B.
 
-<p align="center">
-  <strong>Project Seminar &mdash; Mathematical Methods for Uncertainty Quantification in Hydrology</strong><br/>
-  Chair of Hydrology and River Basin Management<br/>
-  Technical University of Munich (TUM)
-</p>
+A hydrological model that fits an observed flood event well is not the same thing
+as a model you can trust. This repository is the record of a seminar that took one
+calibrated rainfall-runoff model and asked, in five steps, how much of its apparent
+skill survives contact with the uncertainty around it: in the parameters, in the
+rainfall that drives it, and in the discharge it is scored against.
 
-<p align="center">
-  <em>Group B &mdash; Winter Semester 2025/26</em>
-</p>
+The short answer, and the result the whole sequence builds to, is that the
+observations are the weak point. Adding realistic noise to the rainfall leaves the
+fit essentially untouched. Propagating realistic rating-curve error into the
+observed discharge costs about 0.15 of Nash-Sutcliffe efficiency, and recalibrating
+the model against the corrupted record wins back almost none of it.
 
-<p align="center">
-  <a href="#overview">Overview</a> &bull;
-  <a href="#assignments">Assignments</a> &bull;
-  <a href="#repository-structure">Structure</a> &bull;
-  <a href="#getting-started">Getting Started</a> &bull;
-  <a href="#contributors">Contributors</a>
-</p>
+## Authorship
 
----
+This is a three-person group submission, and the work is joint. What the git
+history records about who committed what:
 
-## Overview
-
-This repository contains the complete deliverables for the **Project Seminar on Mathematical Methods for Uncertainty Quantification in Hydrology** at TUM. The seminar follows a progressive workflow &mdash; from model calibration through multiple forms of uncertainty analysis &mdash; applied to the **HBV001a** lumped conceptual rainfall-runoff model.
-
-### Model
-
-| Property | Description |
+| Author | Contribution as recorded in the history |
 |:--|:--|
-| **Model** | HBV001a (by Faizan Anwar) |
-| **Type** | Lumped conceptual rainfall-runoff |
-| **Time step** | Hourly |
-| **Forcing data** | Temperature, precipitation, potential evapotranspiration |
-| **Parameters** | 18 (snow, soil moisture, upper & lower reservoir modules) |
-| **Event** | Short, rainfall-dominated high-flow event |
+| Christine Leers | First working versions of the calibration, local and global sensitivity, and both uncertainty assignment scripts, plus the running task list the group worked from |
+| Yihan Shen | Exercise 1 |
+| Mohd Zamin Quadri | HBV and Cython integration and data configuration, the production runs behind `results/`, consolidation of the group material into this repository, and report assembly |
 
-### Key Results at a Glance
+Commit counts are a poor measure of who did what here. Most of Christine's commits
+add a single file; the consolidation commits move several hundred at once. Neither
+number reflects effort. Treat the scientific work as the group's.
 
-| Assignment | Topic | Headline Result |
-|:--:|:--|:--|
-| 1 | Model Calibration | Best **NSE = 0.908** via Differential Evolution |
-| 2 | Local Sensitivity Analysis | `sl0_fcy` (field capacity) dominates near the optimum |
-| 3 | Global Sensitivity Analysis | `lrr_dre` (ST = 0.60) dominates globally; strong interactions |
-| 4 | Input Uncertainty | 5% precipitation noise degrades NSE by only 0.0004 |
-| 5 | Output Uncertainty | Rating-curve errors drop NSE from 0.908 to 0.759 |
+## The model and the event
 
----
-
-## Assignments
-
-### Assignment 1 &mdash; Model Parameter Optimization
-
-> **Goal:** Establish a reference calibration using global optimization.
-
-- **Method:** Differential Evolution (`scipy.optimize.differential_evolution`), strategy `best1bin`, population size 10, up to 600 generations
-- **Objective function:** Nash-Sutcliffe Efficiency (NSE)
-- **Best NSE:** 0.908 (converged at generation 419; practical convergence at ~250)
-- **Process turn-off experiments:**
-  - Snow module off &rarr; NSE = 0.496 (snow melt is critical)
-  - Lower reservoir off &rarr; NSE = -0.754 (model collapse)
-  - Groundwater off &rarr; NSE = 0.908 (negligible for short event)
-
-<details>
-<summary><strong>Key findings</strong></summary>
-
-- 8 of 18 parameters converge within ~250 generations
-- Parameter `urr_ulc` exhibits a sudden shift at ~200 generations, suggesting the optimizer jumped between solution regions
-- Insensitive parameters: `sl0_pwp`, `urr_tdh`, `urr_tdr`, `urr_wsr`
-
-</details>
-
----
-
-### Assignment 2 &mdash; Local Sensitivity Analysis
-
-> **Goal:** Identify which parameters control model performance near the calibrated optimum.
-
-- **Method:** One-at-a-time perturbation, each parameter varied from -30% to +30% in 120 steps
-- **Metric:** Maximum absolute relative change in OFV
-
-**Most sensitive parameters (ranked):**
-
-| Rank | Parameter | Description |
-|:--:|:--|:--|
-| 1 | `sl0_fcy` | Field capacity (dominant control) |
-| 2 | `sl0_dth` | Initial soil depth |
-| 3 | `lrr_dre` | Lower reservoir drainage ratio |
-| 4 | `snw_pmf` / `snw_amf` | Snow melt factors |
-| 5 | `urr_ulc` | Percolation rate |
-
-<details>
-<summary><strong>Key findings</strong></summary>
-
-- ~10 of 18 parameters are effectively inactive near the optimum
-- Four mechanisms for non-sensitivity identified: boundary clamping, inactive processes, flat response surface, small calibrated value
-- 3 parameters showed marginal NSE improvement (max 0.015), indicating a locally flat objective surface
-
-</details>
-
----
-
-### Assignment 3 &mdash; Global Sensitivity Analysis (Sobol Method)
-
-> **Goal:** Quantify parameter importance across the entire parameter space, including interactions.
-
-- **Method:** Sobol variance decomposition with Saltelli quasi-random sampling via `SALib`
-- **Configurations tested:** {Full range, Narrow range} x {NSE, logNSE}
-
-| Configuration | V(Y) | Top Parameter (S_T) | Sum S_T | Interactions |
-|:--|:--:|:--|:--:|:--|
-| Full range + NSE | 0.463 | `lrr_dre` (0.60) | 1.856 | Strong |
-| Narrow + NSE | 0.002 | `sl0_fcy` (0.50) | -- | Moderate |
-| Narrow + logNSE | 0.109 | `lrr_dre` (0.55) | 1.135 | Low |
-| Full + logNSE | 3.2e-5 | Unreliable | -- | -- |
-
-<details>
-<summary><strong>Key findings</strong></summary>
-
-- Full-range analysis reveals `lrr_dre` and `lrr_dth` as globally dominant, differing from the local SA ranking
-- Sum S_T (1.856) far exceeds 1.0, indicating strong parameter interactions
-- logNSE with full-range sampling fails (sum S_1 = 6.28) due to log-divergence at near-zero flows
-- Narrow range shrinks V(Y) by a factor of ~440 compared to full range under NSE
-
-</details>
-
----
-
-### Assignment 4 &mdash; Input (Precipitation) Uncertainty
-
-> **Goal:** Assess how random errors in precipitation propagate through the model.
-
-- **Method:** 2000 perturbed precipitation series via Gaussian multipliers (C ~ N(1.0, 0.083), ~5% noise)
-- **Experiments:**
-  - (A) Fixed reference parameters &rarr; mean NSE = 0.9073
-  - (B) Full recalibration per series &rarr; mean NSE = 0.9075
-
-| Metric | Value |
+| Property | Value |
 |:--|:--|
-| Mean MARC | 6.62% |
-| NSE degradation (fixed params) | -0.0004 |
-| Improvement from recalibration | +0.0002 |
-| Series improved by recalibration | 95.4% |
+| Model | HBV001a, a lumped conceptual rainfall-runoff model by Faizan Anwar |
+| Parameters | 18, across snow, soil moisture, upper and lower reservoir modules |
+| Time step | Hourly |
+| Forcing | Temperature, precipitation, potential evapotranspiration |
+| Event | A single short, rainfall-dominated high-flow event |
+| Objective | 1 minus Nash-Sutcliffe efficiency, minimised |
 
-<details>
-<summary><strong>Key findings</strong></summary>
+The event is short and rainfall-dominated, which matters for reading everything
+below: it is why the groundwater store turns out to be irrelevant here, and it is
+not a general statement about the model.
 
-- Random precipitation noise has minimal impact on model performance
-- Recalibration provides marginal improvement but increases parameter uncertainty for slow-response parameters (`urr_tdr`, `urr_tdh`)
-- MARC shows negligible correlation with OFV &mdash; performance driven by specific noise realization, not average noise magnitude
-- Consistent with Oudin et al. (2006): random errors are benign; systematic bias (not tested) is the greater concern
+## Assignment 1: calibration, and what the fit rests on
 
-</details>
+![Calibration and process turn-off](docs/figures/01_calibration.png)
 
----
+Differential evolution (`scipy.optimize.differential_evolution`, strategy
+`best1bin`, population size 10) over the 18 parameters, run for 419 generations and
+75,480 model evaluations. The best objective reached is 0.0924, an NSE of **0.9076**.
+The search is within 0.001 of its final value by generation 308.
 
-### Assignment 5 &mdash; Output (Discharge) Uncertainty
+Individual process stores were then switched off and the model re-run with the
+calibrated parameters:
 
-> **Goal:** Examine how stage-discharge rating curve uncertainty affects calibration.
+| Configuration | NSE | Reading |
+|:--|:--:|:--|
+| All processes on | 0.9076 | The calibrated baseline |
+| Groundwater off | 0.9076 | No measurable effect on this event |
+| Upper reservoir off | 0.9076 | No measurable effect on this event |
+| Snow off | 0.4959 | Snowmelt supplies a large part of the volume |
+| Lower reservoir off | -0.7539 | The model collapses |
 
-- **Method:** Dual-power-law rating curve with sigmoid transition, fitted to QH data (R^2 = 0.9987)
-- **Perturbation:** 2000 discharge series generated by perturbing water level by +/-15 cm
-- **Impact:** NSE drops from **0.908 to ~0.759** (severe degradation)
+An NSE below zero means the model predicts the event worse than simply using the
+mean of the observations would. The lower reservoir is not a refinement here, it is
+load-bearing.
 
-| Metric | Value |
-|:--|:--|
-| Rating curve R^2 | 0.9987 |
-| NSE drop | 0.908 &rarr; 0.759 |
-| Series degraded | 100% |
-| Loss recovered by recalibration | 5.76% |
+## Assignment 2: local sensitivity around the optimum
 
-<details>
-<summary><strong>Key findings</strong></summary>
+Each parameter was perturbed one at a time from -30% to +30% in 120 steps, holding
+the others at their calibrated values, and scored by the maximum absolute relative
+change in the objective. Near the optimum the ranking is led by `sl0_fcy` (field
+capacity), followed by `sl0_dth`, `lrr_dre`, the snowmelt factors `snw_pmf` and
+`snw_amf`, and `urr_ulc`.
 
-- Output uncertainty has a far more severe impact than input uncertainty
-- The model cannot compensate for rating-curve errors through recalibration (only 5.76% recovery)
-- Steep QH relationship at high water levels amplifies stage perturbations disproportionately
-- Results argue strongly for uncertainty-aware calibration frameworks (e.g., Bayesian approaches as in Westerberg et al., 2020)
+Roughly ten of the eighteen parameters are effectively inactive in this
+neighbourhood, for four distinguishable reasons: the perturbation is clamped at a
+bound, the process is inactive for this event, the response surface is flat, or the
+calibrated value is small enough that a 30% change is negligible. Files recording
+which perturbations fell outside the parameter bounds are kept in
+`results/assignment2/`, because a parameter that appears insensitive only because
+its range was clipped is a different finding from one that is genuinely flat.
 
-</details>
+## Assignment 3: global sensitivity, and a configuration that fails
 
----
+![Sobol total-order indices under four configurations](docs/figures/02_global_sensitivity.png)
 
-## Repository Structure
+Sobol variance decomposition with Saltelli sampling via `SALib`, run under two
+sampling ranges crossed with two objectives.
 
-```
-.
-|-- code/                               # Python source code
-|   |-- Ass_01_Model_Parameter_Optimisation_Group_B.py
-|   |-- Ass_01_turnoff_processes_Group_B.py
-|   |-- Ass_02_local_SA_Group_B.py
-|   |-- Ass_03_Global_SA_Group_B.py
-|   |-- Ass_04_Input_Uncertainty_Group_B.py
-|   |-- Ass_05_Output_Uncertain_Group_B.py
-|   |-- Ass_05_fittingCurve_Group_B.py
-|   |-- EX1/                            # Exercise 1 Jupyter notebook
-|   |   `-- EX1_MMUQ_Group_B.ipynb
-|   `-- EX3/                            # Exercise 3 (ROPE analysis)
-|       `-- rope_exercise3_pycodes_Final.zip
-|
-|-- results/                            # Output data, figures, CSVs
-|   |-- assignment1_finial_gen600_atol-3/
-|   |-- assignment2/
-|   |-- assignment3/
-|   |-- assignment4_gen600/
-|   |-- assignment5/
-|   `-- Ex 2 parallel DREAM-20260111.zip
-|
-|-- Overleaf_Projects/                  # LaTeX report source
-|   |-- Mathematical methods for .../
-|   |   |-- main.tex                    # Main document
-|   |   |-- acronyms.tex
-|   |   |-- literature.bib
-|   |   |-- Figures/                    # All assignment figures
-|   |   `-- Text/                       # Section text files
-|   |-- MOOC_Group_B.zip
-|   `-- Mathematical methods ... .zip
-|
-|-- Exercise3_Latex_Report_HBV.zip      # Exercise 3 report
-`-- README.md
-```
+| Configuration | V(Y) | Leading parameter | Sum of ST |
+|:--|:--:|:--|:--:|
+| Full range, NSE | 0.463 | `lrr_dre` (0.59) | 1.856 |
+| Narrow range, NSE | 0.00194 | `sl0_fcy` (0.50) | 1.345 |
+| Narrow range, logNSE | 0.109 | `lrr_dre` (0.55) | 1.135 |
+| Full range, logNSE | 0.000032 | not usable | 3.072 |
 
-### Large Files (Git LFS)
+Three things are worth drawing out.
 
-The following files are tracked with [Git Large File Storage](https://git-lfs.github.com/):
+The ranking is not a property of the model alone. Across the full parameter range
+the lower-reservoir parameters `lrr_dre` and `lrr_dth` dominate; restricted to a
+narrow range around the optimum, `sl0_fcy` leads instead, agreeing with the local
+analysis of Assignment 2. Both are correct answers to different questions.
 
-| File | Size |
-|:--|:--:|
-| `code/EX3/rope_exercise3_pycodes_Final.zip` | 2.0 GB |
-| `results/Ex 2 parallel DREAM-20260111.zip` | 372 MB |
+Total-order indices sum well above one, to 1.856 in the full-range NSE case. That is
+not an error. Total-order indices count interaction effects once for every parameter
+involved, so the excess over one measures how far the parameters act jointly rather
+than independently.
 
----
+The fourth configuration is kept because it fails. First-order indices cannot sum to
+more than one, and here they sum to 6.28, which says the estimator has broken down
+rather than that the parameters are important. Taking the logarithm of a
+near-zero flow diverges, and sampling logNSE over the full range guarantees
+near-zero flows. It is reported rather than deleted.
 
-## Getting Started
+Narrowing the sampling range shrinks the output variance by a factor of about **238**
+under NSE, from 0.463 to 0.00194.
 
-### Prerequisites
+## Assignments 4 and 5: error in the input against error in the output
 
-- Python 3.10+
-- Git LFS (for cloning large files)
+![Input against output uncertainty](docs/figures/03_input_vs_output_uncertainty.png)
 
-### Clone
+Both studies generate 2,000 perturbed series, run the model with the Assignment 1
+parameters, and then recalibrate against each perturbed series in turn.
+
+**Assignment 4, precipitation.** Each precipitation value is multiplied by an
+independent Gaussian factor C drawn from N(1.0, 0.083), clipped to [0.75, 1.25] so no
+value moves by more than 25%. The realised mean absolute change in precipitation is
+6.62%. Mean NSE with the reference parameters is **0.9073**, against a calibrated
+baseline of 0.9077: a loss of 0.0004. Recalibration returns 0.0002 of that, and 834
+of the 2,000 noisy series happen to score better than the unperturbed record.
+
+That last number is the useful one. If roughly 40% of corrupted inputs produce a
+better score than the true input, then differences of this size carry no information
+about input quality.
+
+**Assignment 5, discharge.** Observed water level is perturbed by an additive
+uniform draw on [-25, +25] cm, and the perturbed level is converted back to
+discharge through a fitted rating curve: two power laws blended by a sigmoid,
+fitting the stage-discharge data with R squared **0.9987** against 0.8831 for a
+single global power law. Mean NSE falls to **0.7592**. Not one of the 2,000 series
+scores better than the baseline, and recalibration recovers 5.76% of the loss.
+
+The asymmetry is the point of the seminar. The model can absorb noise in what drives
+it. It cannot absorb error in what it is scored against, and no amount of refitting
+will reveal that the target itself is wrong.
+
+## Exercises
+
+Three exercises sit alongside the five assignments. They use different models and
+tools, and their material is archived rather than laid out in the tree.
+
+**Exercise 1** is a notebook, `code/EX1/EX1_MMUQ_Group_B.ipynb`, committed by Yihan
+Shen.
+
+**Exercise 2** is a groundwater problem rather than a rainfall-runoff one: a
+MODFLOW-2005 flood and river model driven by SPOTPY's parallel DREAM sampler,
+`results/Ex 2 parallel DREAM-20260111.zip`. DREAM is an adaptive Markov chain Monte
+Carlo method, so this is the Bayesian counterpart to the point-estimate calibration
+of Assignment 1. It was run across four MPI ranks, and the archive holds the setup
+(`spot_setup_modflow.py`, `run_dream.py`), the per-rank model directories, and
+posterior parameter uncertainty plots for the Alzpitz, B1, B3 and B4 observation
+points.
+
+**Exercise 3** applies ROPE, robust parameter estimation by data depth, to daily HBV
+runs for catchment 420 over two decades.
+
+![Choosing the ROPE threshold](docs/figures/04_rope_threshold.png)
+
+ROPE keeps the deepest parameter sets among those scoring below an objective
+threshold. Lowering that threshold admits more sets, until the sets it admits stop
+lying inside the region they themselves define. Sweeping the threshold down from 1.0
+and stopping at the lowest value whose outside ratio is still under 1% selects
+**0.6** for 1971 to 1980, keeping **405** parameter sets. The same procedure over 1981
+to 1990 settles at **0.4** and keeps **280**. The decade the model is calibrated on
+changes how tightly its parameters can be pinned down.
+
+The Exercise 3 archive is 2.1 GB. The summary files that state these results total
+17 KB, and `scripts/extract_exercise3_summaries.py` lifts them into
+`results/exercise3_rope/` so the conclusions can be read, and the figure regenerated,
+without downloading the archive.
+
+## What is verified here, and what is not
+
+These are versioned seminar results, not independently re-executed claims. Being
+specific about the difference:
+
+- Every number in this README is checked against the files in `results/` by
+  `python scripts/check_claims.py`, which fails if the two disagree. Every figure is
+  generated from those same files by `scripts/figures/generate_figures.py`, so a
+  figure cannot show a value the runs did not produce.
+- The full scientific reruns cannot be reproduced from this repository alone. The
+  forcing and area inputs and the course-provided `hmg` package containing `HBV001A`
+  are not included, and Assignments 1 to 4 need them.
+- The Exercise 2 and Exercise 3 archives are a different case: each carries its own
+  model inputs and supporting packages, and the Exercise 3 archive also contains a
+  checked-in virtual environment and about 2 GB of intermediate simulation output.
+  They are preserved as submitted rather than repackaged.
+- Assignment 5 reports a "calculated NSE" of 0.9000 for the reference parameters
+  against the rating-curve reconstruction of the unperturbed record, distinct from
+  the 0.9077 measured against the original observations. The gap is the rating curve
+  fit itself, before any perturbation is applied.
+
+## Reproducing what can be reproduced
 
 ```bash
-# Install Git LFS first (if not already)
 git lfs install
-
-# Clone the repository
 git clone https://github.com/mzquadri/UQ-Hydrology-Seminar-TUM.git
 cd UQ-Hydrology-Seminar-TUM
-```
-
-### Dependencies
-
-The project uses the following Python packages:
-
-```
-numpy
-scipy
-matplotlib
-pandas
-SALib
-joblib
-```
-
-Install the versioned open-source dependencies with:
-
-```bash
 python -m pip install -r requirements.txt
 ```
 
-### Required course inputs
-
-The forcing, area, and HBV model inputs are course-provided and are not
-redistributed here. Assignments 1-4 additionally require the course-provided
-`hmg` package containing `HBV001A`. Obtain these materials through the
-authorized course channel before executing the scientific workflows.
-
-Set the data directory explicitly rather than editing a source file:
-
-```powershell
-$env:HYDROLOGY_DATA_DIR = "C:\path\to\authorized\hmg\data"
-```
-
-It must contain `time_series___24163005.csv` and `area___24163005.csv`.
-Assignment 5's rating-curve fitting script requires a separately authorized
-CSV and accepts its location through:
-
-```powershell
-$env:HYDROLOGY_RATING_CURVE_PATH = "C:\path\to\time_series___24163005_without_Outliers.csv"
-```
-
-The repository includes result artifacts and report sources, but the full
-scientific reruns cannot be reproduced from this repository alone without the
-course inputs and `hmg` package. The values above are versioned seminar
-results, not independently re-executed claims.
-
-### Integrity check
-
-Run the non-destructive repository check to confirm that the source, key result
-artifacts, and LaTeX report entry point are present:
-
-```bash
-python scripts/check_repository.py
-```
-
-### Windows checkout note
-
-Some report paths are long. On Windows, clone to a short path and enable Git
-long paths, for example:
+Some report paths are long. On Windows, clone to a short path with long paths
+enabled:
 
 ```powershell
 git clone --config core.longpaths=true https://github.com/mzquadri/UQ-Hydrology-Seminar-TUM.git C:\g\h
 ```
 
----
+Checks and figures, none of which need the course data:
 
-## Methodology Overview
+```bash
+python scripts/check_repository.py             # artifacts present and code parses
+python scripts/extract_exercise3_summaries.py  # ROPE summaries out of the archive
+python scripts/check_claims.py                 # README numbers against results/
+python scripts/figures/generate_figures.py     # regenerate docs/figures/
+```
 
-![Workflow overview](docs/diagrams/workflow.svg)
+Re-running the assignments themselves additionally needs the course inputs and the
+`hmg` package, located through environment variables rather than by editing source:
 
-The seminar builds a progressive chain: a calibrated HBV001a baseline (Assignment 1), local sensitivity around the optimum (Assignment 2), global sensitivity across the full parameter space (Assignment 3), and then two uncertainty propagation studies on the same baseline -- precipitation input noise (Assignment 4) and rating-curve output error (Assignment 5). The key takeaway: output uncertainty dominates, and calibration alone cannot recover it.
+```powershell
+$env:HYDROLOGY_DATA_DIR = "C:\path\to\authorized\hmg\data"
+$env:HYDROLOGY_RATING_CURVE_PATH = "C:\path\to\time_series___24163005_without_Outliers.csv"
+```
 
----
+`HYDROLOGY_DATA_DIR` must contain `time_series___24163005.csv` and
+`area___24163005.csv`. The rating-curve path is needed only by Assignment 5's
+curve-fitting script.
+
+## Layout
+
+```
+code/                    Assignment scripts, one per assignment
+  EX1/                   Exercise 1 notebook
+  EX3/                   Exercise 3 archive (Git LFS, 2.1 GB)
+results/                 Run outputs, one directory per assignment
+  exercise3_rope/        ROPE summaries extracted from the archive
+  Ex 2 parallel DREAM-*  Exercise 2 archive (Git LFS, 372 MB)
+docs/figures/            Figures, generated from results/
+docs/diagrams/           Workflow overview
+scripts/                 Checks and figure generation
+Overleaf_Projects/       LaTeX report source and figures
+```
+
+Two archives are tracked with [Git LFS](https://git-lfs.github.com/):
+`code/EX3/rope_exercise3_pycodes_Final.zip` at 2.1 GB and
+`results/Ex 2 parallel DREAM-20260111.zip` at 372 MB. Cloning without Git LFS
+installed leaves them as pointer files; everything else in the repository still
+works, including the figures.
 
 ## References
 
+The report bibliography is
+`Overleaf_Projects/Mathematical methods for uncertainty quantification in hydrology/literature.bib`.
+The works it cites:
+
 | Reference | Topic |
 |:--|:--|
-| Storn & Price (1997) | Differential Evolution algorithm |
-| Moriasi et al. (2007) | NSE model evaluation guidelines |
+| Storn and Price (1997) | Differential evolution |
 | Saltelli et al. (2002) | Sobol sensitivity indices |
-| Oudin et al. (2006) | Impact of biased inputs on watershed models |
-| Westerberg et al. (2020) | Calibration with uncertain discharge data |
+| Oudin et al. (2006) | Impact of biased and randomly corrupted inputs |
+| Moriasi et al. (2007) | Model evaluation guidelines and NSE |
 | Beven (2012) | Rainfall-Runoff Modelling: The Primer |
+| Le Coz et al. (2014) | Bayesian estimation of rating curves |
+| Smith (2014) | Uncertainty quantification, theory and implementation |
+| Houska et al. (2015) | SPOTPY, the parameter optimisation package used in Exercise 2 |
+| Westerberg et al. (2020) | Calibration with uncertain discharge data |
 
----
+## Licence
 
-## Contributors
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/mzquadri">
-        <img src="https://github.com/mzquadri.png" width="100px;" alt=""/><br/>
-        <sub><b>Mohd Zamin Quadri</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/chrLeers">
-        <img src="https://github.com/chrLeers.png" width="100px;" alt=""/><br/>
-        <sub><b>Christine Leers</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/warumso7">
-        <img src="https://github.com/warumso7.png" width="100px;" alt=""/><br/>
-        <sub><b>Yihan Shen</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
-
----
-
-## License
-
-This project was developed as part of an academic seminar at the Technical University of Munich. All rights reserved by the authors — see [LICENSE](LICENSE), which also records what belongs to the Chair rather than to us, and why no open-source licence is offered for three-author coursework.
-
----
-
-<p align="center">
-  <em>Chair of Hydrology and River Basin Management &mdash; Technical University of Munich</em>
-</p>
+Coursework, published to be read rather than reused, with three authors who would
+all have to agree to any reuse. See [LICENSE](LICENSE), which also records what
+belongs to the Chair rather than to us.
