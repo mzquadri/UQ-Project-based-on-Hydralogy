@@ -73,8 +73,11 @@ def main() -> int:
                 source = min(hits, key=lambda n: n.count("/"))
                 target = OUT / period / wanted
                 target.parent.mkdir(parents=True, exist_ok=True)
-                # Normalise to LF so the files read the same on every platform.
+                # Normalise to LF so the files read the same on every platform and
+                # the extraction is byte-identical wherever it is run. The archive
+                # was built on Windows, so its members carry CRLF.
                 text = archive.read(source).decode("utf-8", "replace")
+                text = "\n".join(text.splitlines()) + "\n"
                 target.write_text(text, encoding="utf-8", newline="\n")
                 written += 1
                 print(f"  {period}/{wanted}")
