@@ -1,9 +1,8 @@
 """Check that the versioned hydrology deliverables are present and parseable."""
 
-from pathlib import Path
 import py_compile
 import sys
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = (
@@ -17,7 +16,8 @@ REQUIRED = (
     "code/Ass_05_fittingCurve_Group_B.py",
     "results/assignment1_finial_gen600_atol-3/optimization_gen_summary.csv",
     "results/assignment3/Assignment3_narrow_NSE/sobol_indices_corrected.csv",
-    "Overleaf_Projects/Mathematical methods for uncertainty quantification in hydrology/main.tex",
+    "Overleaf_Projects/Mathematical methods for uncertainty quantification"
+    " in hydrology/main.tex",
 )
 
 

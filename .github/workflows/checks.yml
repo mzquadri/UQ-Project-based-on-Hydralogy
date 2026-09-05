@@ -1,0 +1,49 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The two archives are 2.4 GB together. Nothing checked here needs them:
+          # the Exercise 3 summaries they contain are committed under
+          # results/exercise3_rope/. Fetching them would spend the LFS bandwidth
+          # quota on every run for no benefit.
+          lfs: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install ruff
+
+      - name: Lint the scripts
+        # Only scripts/, which is ours. code/ holds the assignment scripts as
+        # submitted and is deliberately left as it was written.
+        run: ruff check scripts/
+
+      - name: Required artifacts are present and the code parses
+        run: python scripts/check_repository.py
+
+      - name: README numbers still match the result files
+        run: python scripts/check_claims.py
+
+      - name: Figures regenerate
+        run: python scripts/figures/generate_figures.py
+
+      - name: Workflow diagram regenerates identically
+        run: |
+          python scripts/figures/generate_diagram.py
+          git diff --exit-code -- docs/diagrams/workflow.svg

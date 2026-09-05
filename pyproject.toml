@@ -1,0 +1,25 @@
+# Lint configuration only. This repository is a set of scripts and result files,
+# not an installable package.
+#
+# The rule set is pinned here rather than left to ruff's defaults so that a local
+# run and a CI run agree. Defaults change between ruff releases, and a check that
+# passes locally while failing in CI is worse than no check.
+
+[tool.ruff]
+line-length = 90
+# code/ holds the assignment scripts as they were submitted. They are evidence of
+# what was run, so they are not reformatted to suit a linter added afterwards.
+extend-exclude = ["code", "Overleaf_Projects"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import ordering
+    "UP",   # outdated syntax
+    "B",    # likely bugs
+    "C4",   # comprehensions
+    "SIM",  # simplifications
+    "RUF",  # ruff's own checks
+]

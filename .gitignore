@@ -32,3 +32,6 @@ venv/
 *.o
 *.c
 *.html
+
+# Lint cache
+.ruff_cache/
