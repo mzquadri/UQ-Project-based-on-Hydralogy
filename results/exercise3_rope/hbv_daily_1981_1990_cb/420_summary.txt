@@ -1,0 +1,12 @@
+hbv_sim_label_cb = hbv_daily_1981_1990
+cat = 420
+obj_thresh_llim = 0.0
+obj_thresh_ulim = 0.2
+depth_thresh = 3
+n_uvecs = 100000
+n_cpus = 4
+n_after_obj_threshold = 36822
+n_after_depth_filter = 282
+ALL_outside = 31/3287 = 0.94%
+ROPE_outside = 102/3287 = 3.10%
+Depth(best_obj_vector) = 83

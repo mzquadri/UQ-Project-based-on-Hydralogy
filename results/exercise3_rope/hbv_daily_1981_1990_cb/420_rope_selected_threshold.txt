@@ -1,0 +1,6 @@
+cb_label=hbv_daily_1981_1990
+cat=420
+obj_thresh_llim=0.0
+obj_thresh_ulim_selected=0.4000
+outside_ratio_stop=0.01
+n_rope=280
